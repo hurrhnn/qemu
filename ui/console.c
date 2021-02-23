@@ -2574,12 +2574,7 @@ void qemu_console_resize(QemuConsole *s, int width, int height)
 
 DisplaySurface *qemu_console_surface(QemuConsole *console)
 {
-    switch (console->scanout.kind) {
-    case SCANOUT_SURFACE:
-        return console->surface;
-    default:
-        return NULL;
-    }
+    return console->surface;
 }
 
 PixelFormat qemu_default_pixelformat(int bpp)
