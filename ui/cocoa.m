@@ -1757,6 +1757,29 @@ static void addRemovableDevicesMenuItems(void)
     qapi_free_BlockInfoList(pointerToFree);
 }
 
+static void cocoa_mouse_mode_change_notify(Notifier *notifier, void *data)
+{
+    static bool shared_is_absolute;
+
+    qatomic_set(&shared_is_absolute, qemu_input_is_absolute());
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        bool is_absolute = qatomic_read(&shared_is_absolute);
+        if (is_absolute == [cocoaView isAbsoluteEnabled]) {
+            return;
+        }
+
+        if (is_absolute && [cocoaView isMouseGrabbed]) {
+            [cocoaView ungrabMouse];
+        }
+        [cocoaView setAbsoluteEnabled:is_absolute];
+    });
+}
+
+static Notifier mouse_mode_change_notifier = {
+    .notify = cocoa_mouse_mode_change_notify
+};
+
 @interface QemuCocoaPasteboardTypeOwner : NSObject<NSPasteboardTypeOwner>
 @end
 
@@ -1961,17 +1984,6 @@ static void cocoa_refresh(DisplayChangeListener *dcl)
     }
 
     graphic_hw_update(dcl->con);
-
-    if (qemu_input_is_absolute()) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (![cocoaView isAbsoluteEnabled]) {
-                if ([cocoaView isMouseGrabbed]) {
-                    [cocoaView ungrabMouse];
-                }
-            }
-            [cocoaView setAbsoluteEnabled:YES];
-        });
-    }
 
     if (cbchangecount != [[NSPasteboard generalPasteboard] changeCount]) {
         qemu_clipboard_info_unref(cbinfo);
@@ -2516,6 +2528,9 @@ static void cocoa_display_init(DisplayState *ds, DisplayOptions *opts)
 
         kbd = qkbd_state_init(active_listener->dcl.con);
     }
+
+    qemu_add_mouse_mode_change_notifier(&mouse_mode_change_notifier);
+    [cocoaView setAbsoluteEnabled:qemu_input_is_absolute()];
 
     create_initial_menus();
 
