@@ -36,6 +36,8 @@
 #include "hw/qdev-properties.h"
 #include "internals.h"
 
+#include <sys/sysctl.h>
+#include <string.h>
 
 static void aarch64_a57_initfn(Object *obj)
 {
@@ -812,6 +814,15 @@ static void aarch64_host_initfn(Object *obj)
     ARMCPU *cpu = ARM_CPU(obj);
     hvf_arm_set_cpu_features_from_host(cpu);
     aarch64_add_pauth_properties(obj);
+
+	size_t size = 0xff;
+	char cpu_name[0xff] = "";
+	sysctlbyname("machdep.cpu.brand_string", cpu_name, &size, NULL, 0);
+	if(strcmp(cpu_name, "Apple M1 Pro") == 0) {
+		uint64_t t;
+		t = cpu->isar.id_aa64mmfr0;
+		t = FIELD_DP64(t, ID_AA64MMFR0, PARANGE, 1); /* PARange: 36 bits */
+	}
 #else
     g_assert_not_reached();
 #endif
