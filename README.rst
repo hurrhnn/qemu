@@ -1,4 +1,8 @@
 ===========
+ARCHIVING: The M1 Pro/Max Hypervisor.framework bug is seemed to be fixed upstream, so imma unmaintained this repository now.
+===========
+
+===========
 QEMU README
 ===========
 
